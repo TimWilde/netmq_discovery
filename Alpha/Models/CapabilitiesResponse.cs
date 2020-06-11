@@ -11,22 +11,27 @@ namespace Alpha.Models
    /// </summary>
    public class CapabilitiesResponse: NetMQMessage, ICapabilities
    {
-      public ImmutableArray<Capability> Capabilities { get; }
-
-      private CapabilitiesResponse( IEnumerable<Capability> capabilities )
+      public ImmutableArray<Capability> Capabilities
       {
-         Capabilities = capabilities.ToImmutableArray();
+         get
+         {
+            List<NetMQFrame> frames = this.ToList();
+
+            int index = frames.FindIndex( frame => frame.IsEmpty );
+            if( index >= 0 ) frames.RemoveRange( 0, index + 1 );
+
+            return frames.Select( frame => Capability.Parse( frame.ConvertToString() ) ).ToImmutableArray();
+         }
       }
 
-      private CapabilitiesResponse( IEnumerable<NetMQFrame> frames )
+      private CapabilitiesResponse( string recipientId, IEnumerable<Capability> capabilities )
       {
-         List<NetMQFrame> frameList = frames.ToList();
-
-         int index = frameList.FindIndex( frame => frame.IsEmpty );
-         if( index >= 0 ) frameList.RemoveRange( 0, index + 1 );
-
-         Capabilities = frameList.Select( frame => Capability.Parse( frame.ConvertToString() ) ).ToImmutableArray();
+         Append( new NetMQFrame( recipientId ) );
+         AppendEmptyFrame();
+         foreach( Capability capability in capabilities ) Append( capability.ToString() );
       }
+
+      private CapabilitiesResponse( IEnumerable<NetMQFrame> frames ): base( frames ) { }
 
       /// <summary>
       ///    Repackages a vanilla <see cref="NetMQMessage" /> into a <see cref="CapabilitiesResponse" /> providing simpler access
@@ -45,11 +50,12 @@ namespace Alpha.Models
       /// <summary>
       ///    Creates a new <see cref="CapabilitiesResponse" /> containing the supplied capabilities
       /// </summary>
+      /// <param name="recipientId">The socket identity used by NetMQ routing</param>
       /// <param name="capabilities">The <see cref="Capability" /> details to be included in the new message</param>
       /// <returns>A new <see cref="CapabilitiesResponse" /> containing the specified capabilities</returns>
-      public static CapabilitiesResponse From( params Capability[] capabilities )
+      public static CapabilitiesResponse From( string recipientId, params Capability[] capabilities )
       {
-         return new CapabilitiesResponse( capabilities );
+         return new CapabilitiesResponse( recipientId, capabilities );
       }
    }
 }

@@ -169,7 +169,8 @@
                Log( "Sending capabilities" );
                // TODO: Implement capabilities
                capabilitiesSocket.TrySendMultipartMessage( TimeSpan.FromSeconds( 1 ),
-                                                           CapabilitiesResponse.From( Capability.Parse( "One:1" ),
+                                                           CapabilitiesResponse.From( request.Id,
+                                                                                      Capability.Parse( "One:1" ),
                                                                                       Capability.Parse( "Other:12" ) ) );
             }
             else
