@@ -1,4 +1,4 @@
-﻿namespace Alpha
+﻿namespace Alpha.Services
 {
    using System;
    using System.Collections.Concurrent;
@@ -8,6 +8,7 @@
    using System.Threading.Tasks;
    using Microsoft.Extensions.Hosting;
    using Microsoft.Extensions.Logging;
+   using Models;
    using NetMQ;
    using NetMQ.Sockets;
 

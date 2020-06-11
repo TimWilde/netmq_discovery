@@ -1,6 +1,7 @@
-namespace Alpha
+namespace Alpha.Models
 {
    using System.Collections.Immutable;
+   using Services;
 
    /// <summary>
    ///    Encapsulates the address and capability details of a remote service

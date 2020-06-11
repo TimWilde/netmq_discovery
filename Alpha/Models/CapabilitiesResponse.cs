@@ -1,9 +1,10 @@
-namespace Alpha
+namespace Alpha.Models
 {
    using System.Collections.Generic;
    using System.Collections.Immutable;
    using System.Linq;
    using NetMQ;
+   using Services;
 
    /// <summary>
    ///    A Specialized <see cref="NetMQMessage" /> that describes the capabilities of a service

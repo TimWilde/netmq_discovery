@@ -1,4 +1,4 @@
-namespace Alpha
+namespace Alpha.Models
 {
    using System;
 

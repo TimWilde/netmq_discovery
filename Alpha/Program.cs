@@ -4,6 +4,7 @@ namespace Alpha
    using Microsoft.Extensions.Hosting;
    using Microsoft.Extensions.Logging;
    using Microsoft.Extensions.Logging.Console;
+   using Services;
 
    public class Program
    {
