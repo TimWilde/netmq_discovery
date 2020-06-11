@@ -14,8 +14,7 @@ namespace Alpha.Models
 
       /// <summary>
       ///    Creates a new <see cref="Capability" /> instance from a string containing a <see cref="System.Type" />'s fully
-      ///    qualified name and a port number,
-      ///    separated by a colon
+      ///    qualified name and a port number, separated by a colon
       /// </summary>
       /// <param name="input">a string in <c>type:port</c> format</param>
       /// <returns>An immutable <see cref="Capability" /> instance describing the type and port</returns>
