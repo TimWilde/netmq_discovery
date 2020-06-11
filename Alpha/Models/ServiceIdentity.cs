@@ -1,6 +1,7 @@
 ﻿namespace Alpha.Models
 {
    using System;
+   using System.Collections.Generic;
    using shortid;
 
    /// <summary>
@@ -10,10 +11,14 @@
    {
       private const char SEPARATOR = ':';
 
-      public string Id { get; private set; }
-      public string Type { get; private set; }
+      public readonly string Id;
+      public readonly string Type;
 
-      private ServiceIdentity() { }
+      private ServiceIdentity( string id, string type )
+      {
+         Id = id;
+         Type = type;
+      }
 
       /// <summary>
       ///    Generates a new <see cref="ServiceIdentity" /> for the specified type using the supplied prefix to the generated
@@ -25,7 +30,7 @@
       /// <returns>A new <see cref="ServiceIdentity" /> instance for the <paramref name="T" /> type with a unique Id</returns>
       public static ServiceIdentity For<T>( T instance, string prefix = "" )
       {
-         return new ServiceIdentity { Id = $"{prefix}{ShortId.Generate( true, false, 8 )}", Type = instance.GetType().FullName };
+         return new ServiceIdentity( $"{prefix}{ShortId.Generate( true, false, 8 )}", instance.GetType().FullName );
       }
 
       /// <summary>
@@ -38,8 +43,45 @@
       public static ServiceIdentity From( string identity )
       {
          var parts = identity.Split( SEPARATOR, StringSplitOptions.RemoveEmptyEntries );
-         return new ServiceIdentity { Id = parts[ 0 ], Type = parts[ 1 ] };
+         return new ServiceIdentity( parts[ 0 ], parts[ 1 ] );
       }
+
+      protected bool Equals( ServiceIdentity other )
+      {
+         return Id == other.Id && Type == other.Type;
+      }
+
+      public override bool Equals( object obj )
+      {
+         if( ReferenceEquals( null, obj ) ) return false;
+         if( ReferenceEquals( this, obj ) ) return true;
+         if( obj.GetType() != this.GetType() ) return false;
+         return Equals( (ServiceIdentity) obj );
+      }
+
+      public override int GetHashCode()
+      {
+         return HashCode.Combine( Id, Type );
+      }
+
+      private sealed class IdTypeEqualityComparer: IEqualityComparer<ServiceIdentity>
+      {
+         public bool Equals( ServiceIdentity x, ServiceIdentity y )
+         {
+            if( ReferenceEquals( x, y ) ) return true;
+            if( ReferenceEquals( x, null ) ) return false;
+            if( ReferenceEquals( y, null ) ) return false;
+            if( x.GetType() != y.GetType() ) return false;
+            return x.Id == y.Id && x.Type == y.Type;
+         }
+
+         public int GetHashCode( ServiceIdentity obj )
+         {
+            return HashCode.Combine( obj.Id, obj.Type );
+         }
+      }
+
+      public static IEqualityComparer<ServiceIdentity> IdTypeComparer { get; } = new IdTypeEqualityComparer();
 
       public override string ToString()
       {
