@@ -21,11 +21,50 @@ docker-compose up --build
 
 Using the `--build` flag should ensure code changes are included each time.
 
+```
+$ docker-compose up --build
+...
+<build logs elided>
+...
+Stopping and removing netmqmutualdiscovery_alpha_2 ... done
+Starting netmqmutualdiscovery_alpha_1              ... done
+Attaching to netmqmutualdiscovery_alpha_1
+alpha_1  | <7>Alpha.Services.AlphaService[0] (1) Service ID: SVC_ywzsY0nW:Alpha.Services.AlphaService
+alpha_1  | <6>Microsoft.Hosting.Lifetime[0] Application started. Press Ctrl+C to shut down.
+alpha_1  | <6>Microsoft.Hosting.Lifetime[0] Hosting environment: Production
+alpha_1  | <6>Microsoft.Hosting.Lifetime[0] Content root path: /app
+alpha_1  | <7>Alpha.Services.AlphaService[0] (4) Capabilities response listener running
+alpha_1  | <7>Alpha.Services.AlphaService[0] (4) Presence response listener running
+alpha_1  | <7>Alpha.Services.AlphaService[0] (4) No beacons available
+alpha_1  | <7>Alpha.Services.AlphaService[0] (4) No beacons available
+
+```
+
 This will run a single instance, but multiple are required for discovery to work, so the service needs to be scaled up:
 
 ```
 docker-compose scale alpha=2
 ```
+
+```
+alpha_2  | <7>Alpha.Services.AlphaService[0] (1) Service ID: SVC_LxdAn2e5:Alpha.Services.AlphaService
+alpha_2  | <6>Microsoft.Hosting.Lifetime[0] Application started. Press Ctrl+C to shut down.
+alpha_2  | <6>Microsoft.Hosting.Lifetime[0] Hosting environment: Production
+alpha_2  | <6>Microsoft.Hosting.Lifetime[0] Content root path: /app
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) Capabilities response listener running
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) Presence response listener running
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) No beacons available
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) Connecting to SVC_yGfws1qm:Alpha.Services.AlphaService at 192.168.48.2:5671
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) Sending request for capabilities
+alpha_2  | <7>Alpha.Services.AlphaService[0] (4) Waiting for capabilities response...
+alpha_1  | <7>Alpha.Services.AlphaService[0] (5) No beacons available
+alpha_1  | <7>Alpha.Services.AlphaService[0] (5) Connecting to SVC_LxdAn2e5:Alpha.Services.AlphaService at 192.168.48.3:5671
+alpha_1  | <7>Alpha.Services.AlphaService[0] (5) Sending request for capabilities
+alpha_1  | <7>Alpha.Services.AlphaService[0] (5) Waiting for capabilities response...
+
+```
+
+> Note the instance names in the left-hand column.
 
 ## Cleanup
 Stop the containers running in Docker:
