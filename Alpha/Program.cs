@@ -18,7 +18,11 @@ namespace Alpha
              .ConfigureLogging( logging =>
                                 {
                                    logging.ClearProviders();
-                                   logging.AddConsole( console => console.Format = ConsoleLoggerFormat.Systemd );
+                                   logging.AddConsole( console =>
+                                                       {
+                                                          console.TimestampFormat = "hhh:mm:ss.fff ";
+                                                          console.Format = ConsoleLoggerFormat.Systemd;
+                                                       } );
                                 } )
              .ConfigureServices( ( hostContext, services ) => { services.AddHostedService<AlphaService>(); } );
    }
