@@ -43,13 +43,13 @@
 
          await Task.Run( () =>
                          {
-                            using var presenceQueue = new NetMQQueue<PresenceRequest>();
+                            using var beaconQueue = new NetMQQueue<ServiceBeacon>();
                             using var runtime = new NetMQRuntime();
 
                             runtime.Run( token,
                                          CapabilitiesResponseAsync( token ),
-                                         PresenceResponseAsync( token, presenceQueue ),
-                                         PresenceBeaconAsync( token, presenceQueue ),
+                                         PresenceResponseAsync( token, beaconQueue ),
+                                         PresenceBeaconAsync( token, beaconQueue ),
                                          DebugDetails( token ) );
                          }, token );
       }
@@ -83,7 +83,7 @@
       /// <param name="token">token to signal termination</param>
       /// <param name="queue">queue onto which new peer details are placed to later be processed by PresenceResponseAsync</param>
       /// <returns>Void (async)</returns>
-      private async Task PresenceBeaconAsync( CancellationToken token, NetMQQueue<PresenceRequest> queue )
+      private async Task PresenceBeaconAsync( CancellationToken token, NetMQQueue<ServiceBeacon> queue )
       {
          using var presence = new NetMQBeacon();
 
@@ -94,7 +94,7 @@
          while( !token.IsCancellationRequested )
          {
             bool received = presence.TryReceive( TimeSpan.FromSeconds( 1 ), out BeaconMessage beacon );
-            if( received ) queue.Enqueue( new PresenceRequest( beacon, CONTROL_PREFIX ) );
+            if( received ) queue.Enqueue( new ServiceBeacon( beacon, CONTROL_PREFIX ) );
 
             await Task.Yield();
          }
@@ -108,26 +108,26 @@
       /// <param name="token">token to signal termination</param>
       /// <param name="queue">queue from which details of new peers are fetched</param>
       /// <returns>Void (async)</returns>
-      private async Task PresenceResponseAsync( CancellationToken token, NetMQQueue<PresenceRequest> queue )
+      private async Task PresenceResponseAsync( CancellationToken token, NetMQQueue<ServiceBeacon> queue )
       {
          Log( "Presence response listener running" );
 
          while( !token.IsCancellationRequested )
          {
-            bool dequeued = queue.TryDequeue( out PresenceRequest request, TimeSpan.FromSeconds( 1 ) );
+            bool dequeued = queue.TryDequeue( out ServiceBeacon beacon, TimeSpan.FromSeconds( 1 ) );
 
             // TODO: Handle beacons which indicate the peer is shutting down.
 
-            if( dequeued && !peers.ContainsKey( request.Identity ) )
+            if( dequeued && !peers.ContainsKey( beacon.Identity ) )
             {
                using var presenceSocket = new DealerSocket();
                presenceSocket.Options.Identity = Encoding.Unicode.GetBytes( identity.Id );
 
-               Log( $"Connecting to {request.Identity} at {request.Address}:{CAPABILITIES_PORT}" );
-               presenceSocket.Connect( $"tcp://{request.Address}:{CAPABILITIES_PORT}" );
+               Log( $"Connecting to {beacon.Identity} at {beacon.Address}:{CAPABILITIES_PORT}" );
+               presenceSocket.Connect( $"tcp://{beacon.Address}:{CAPABILITIES_PORT}" );
 
                Log( "Sending request for capabilities" );
-               presenceSocket.SendMultipartMessage( new CapabilitiesRequest( request.Identity ) );
+               presenceSocket.SendMultipartMessage( CapabilitiesRequest.To( beacon.Identity ) );
 
                Log( "Waiting for capabilities response..." );
                NetMQMessage message = await presenceSocket.ReceiveMultipartMessageAsync( 3, token );
@@ -136,7 +136,7 @@
                ICapabilities capabilities = CapabilitiesResponse.From( message );
 
                Log( "Recording peer capabilities" );
-               peers[ request.Identity ] = PeerDetails.From( request, capabilities );
+               peers[ beacon.Identity ] = PeerDetails.From( beacon, capabilities );
             }
             else
             {

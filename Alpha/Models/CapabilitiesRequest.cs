@@ -17,17 +17,7 @@ namespace Alpha.Models
 
       private CapabilitiesRequest( IEnumerable<NetMQFrame> frames ): base( frames ) { }
 
-      /// <summary>
-      ///    Builds a <see cref="CapabilitiesRequest" /> which uses the specified <see cref="ServiceIdentity" /> to populate the
-      ///    identity frame of the message.
-      ///    <para>
-      ///       The resulting instance will have exactly three frames: an Identity frame, an Empty delimiter frame, a Hello frame
-      ///    </para>
-      /// </summary>
-      /// <param name="service">
-      ///    The <see cref="ServiceIdentity" /> from which to use the Id property for the Identity frame of the message
-      /// </param>
-      public CapabilitiesRequest( ServiceIdentity service )
+      private CapabilitiesRequest( ServiceIdentity service )
       {
          Append( service.Id );
          AppendEmptyFrame();
@@ -48,6 +38,21 @@ namespace Alpha.Models
       public static CapabilitiesRequest From( NetMQMessage message )
       {
          return new CapabilitiesRequest( message );
+      }
+
+      /// <summary>
+      ///    Builds a <see cref="CapabilitiesRequest" /> which uses the specified <see cref="ServiceIdentity" /> to populate the
+      ///    identity frame of the message.
+      ///    <para>
+      ///       The resulting instance will have exactly three frames: an Identity frame, an Empty delimiter frame, a Hello frame
+      ///    </para>
+      /// </summary>
+      /// <param name="service">
+      ///    The <see cref="ServiceIdentity" /> from which to use the Id property for the Identity frame of the message
+      /// </param>
+      public static CapabilitiesRequest To( ServiceIdentity service )
+      {
+         return new CapabilitiesRequest( service );
       }
    }
 }

@@ -8,12 +8,12 @@ namespace Alpha.Models
    /// <remarks>
    ///    DTO: https://en.wikipedia.org/wiki/Data_transfer_object
    /// </remarks>
-   public class PresenceRequest
+   public class ServiceBeacon
    {
       public string Address { get; }
       public ServiceIdentity Identity { get; }
 
-      public PresenceRequest( BeaconMessage beacon, string prefix )
+      public ServiceBeacon( BeaconMessage beacon, string prefix )
       {
          Address = beacon.PeerHost;
          Identity = ServiceIdentity.From( beacon.String.Replace( prefix, string.Empty ) );
