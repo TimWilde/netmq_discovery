@@ -16,7 +16,7 @@ namespace Alpha.Models
       public ServiceBeacon( BeaconMessage beacon, string prefix )
       {
          Address = beacon.PeerHost;
-         Identity = ServiceIdentity.From( beacon.String.Replace( prefix, string.Empty ) );
+         Identity = ServiceIdentity.Parse( beacon.String.Replace( prefix, string.Empty ) );
 
          // TODO: Capture shutting down indicator from beacon.String
       }

@@ -40,7 +40,7 @@
       ///    The string encoded service identity from which to derive the new <see cref="ServiceIdentity" />
       /// </param>
       /// <returns>A new <see cref="ServiceIdentity" /> instance with the details parsed from the supplied string</returns>
-      public static ServiceIdentity From( string identity )
+      public static ServiceIdentity Parse( string identity )
       {
          var parts = identity.Split( SEPARATOR, StringSplitOptions.RemoveEmptyEntries );
          return new ServiceIdentity( parts[ 0 ], parts[ 1 ] );
