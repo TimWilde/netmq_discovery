@@ -6,6 +6,7 @@
    using System.Text;
    using System.Threading;
    using System.Threading.Tasks;
+   using Infrastructure;
    using Microsoft.Extensions.Hosting;
    using Microsoft.Extensions.Logging;
    using Models;
@@ -41,17 +42,12 @@
       {
          Log( $"Service ID: {identity}" );
 
-         await Task.Run( () =>
-                         {
-                            using var beaconQueue = new NetMQQueue<ServiceBeacon>();
-                            using var runtime = new NetMQRuntime();
+         using var beaconQueue = new NetMQQueue<ServiceBeacon>();
 
-                            runtime.Run( token,
-                                         CapabilitiesResponseAsync( token ),
-                                         PresenceResponseAsync( token, beaconQueue ),
-                                         PresenceBeaconAsync( token, beaconQueue ),
-                                         DebugDetails( token ) );
-                         }, token );
+         await Task.WhenAll( Task.Factory.StartNew( () => { new NetMQRuntime().Run( token, CapabilitiesResponseAsync( token ) ); }, token ),
+                             Task.Factory.StartNew( () => { new NetMQRuntime().Run( token, PresenceResponseAsync( token, beaconQueue ) ); }, token ),
+                             Task.Factory.StartNew( () => { new NetMQRuntime().Run( token, PresenceBeaconAsync( token, beaconQueue ) ); }, token )
+                            /*, Task.Factory.StartNew( () => { new NetMQRuntime().Run( token, DebugDetails( token ) ); }, token )*/ );
       }
 
       /// <summary>
@@ -63,9 +59,6 @@
       {
          while( !token.IsCancellationRequested )
          {
-            await Task.Delay( TimeSpan.FromSeconds( 3 ), token );
-
-            // logger.LogDebug( $"{identity} {DateTime.Now}" );
             foreach( ( ServiceIdentity id, PeerDetails details ) in peers )
             {
                Log( $"Peer {id} @ {details.Address}" );
@@ -73,7 +66,7 @@
                   Log( $"   > {capability.Port} >> {capability.Type}" );
             }
 
-            await Task.Yield();
+            await Task.Delay( TimeSpan.FromSeconds( 1 ), token );
          }
       }
 
@@ -91,10 +84,20 @@
          presence.Subscribe( CONTROL_PREFIX );
          presence.Publish( $"{CONTROL_PREFIX}{identity}" );
 
+         Log( "Beacon listener running" );
+
          while( !token.IsCancellationRequested )
          {
-            bool received = presence.TryReceive( TimeSpan.FromSeconds( 1 ), out BeaconMessage beacon );
-            if( received ) queue.Enqueue( new ServiceBeacon( beacon, CONTROL_PREFIX ) );
+            bool received = presence.TryReceive( TimeSpan.FromMilliseconds( 100 ), out BeaconMessage beacon );
+            if( received )
+            {
+               var serviceBeacon = new ServiceBeacon( beacon, CONTROL_PREFIX );
+               if( !peers.ContainsKey( serviceBeacon.Identity ) )
+               {
+                  Log( $" ! Beacon from new host: {serviceBeacon.Address} => {serviceBeacon.Identity}" );
+                  queue.Enqueue( serviceBeacon );
+               }
+            }
 
             await Task.Yield();
          }
@@ -110,40 +113,44 @@
       /// <returns>Void (async)</returns>
       private async Task PresenceResponseAsync( CancellationToken token, NetMQQueue<ServiceBeacon> queue )
       {
-         Log( "Presence response listener running" );
-
-         while( !token.IsCancellationRequested )
+         try
          {
-            bool dequeued = queue.TryDequeue( out ServiceBeacon beacon, TimeSpan.FromSeconds( 1 ) );
+            Log( "Presence response listener running" );
 
-            // TODO: Handle beacons which indicate the peer is shutting down.
-
-            if( dequeued && !peers.ContainsKey( beacon.Identity ) )
+            while( !token.IsCancellationRequested )
             {
-               using var presenceSocket = new DealerSocket();
-               presenceSocket.Options.Identity = Encoding.Unicode.GetBytes( identity.Id );
+               bool dequeued = queue.TryDequeue( out ServiceBeacon beacon, TimeSpan.FromSeconds( 1 ) );
 
-               Log( $"Connecting to {beacon.Identity} at {beacon.Address}:{CAPABILITIES_PORT}" );
-               presenceSocket.Connect( $"tcp://{beacon.Address}:{CAPABILITIES_PORT}" );
+               // TODO: Handle beacons which indicate the peer is shutting down.
 
-               Log( "Sending request for capabilities" );
-               presenceSocket.SendMultipartMessage( CapabilitiesRequest.To( beacon.Identity ) );
+               if( dequeued )
+               {
+                  using var presenceSocket = new DealerSocket();
+                  presenceSocket.Options.Identity = Encoding.Unicode.GetBytes( identity.Id );
+                  presenceSocket.Options.DelayAttachOnConnect = true;
 
-               Log( "Waiting for capabilities response..." );
-               NetMQMessage message = await presenceSocket.ReceiveMultipartMessageAsync( 3, token );
+                  Log( $" < Connecting to {beacon.Identity} at {beacon.Address}:{CAPABILITIES_PORT}" );
+                  presenceSocket.Connect( $"tcp://{beacon.Address}:{CAPABILITIES_PORT}" );
 
-               Log( "Parsing response" );
-               ICapabilities capabilities = CapabilitiesResponse.From( message );
+                  Log( " < Sending request for capabilities" );
+                  presenceSocket.SendMultipartMessage( new CapabilitiesRequest() );
 
-               Log( "Recording peer capabilities" );
-               peers[ beacon.Identity ] = PeerDetails.From( beacon, capabilities );
+                  Log( " < Waiting for capabilities response..." );
+                  NetMQMessage message = await presenceSocket.ReceiveMultipartMessageAsync( 3, token );
+
+                  Log( " < Parsing response" );
+                  ICapabilities capabilities = CapabilitiesResponse.From( message );
+
+                  Log( " < Recording peer capabilities" );
+                  peers[ beacon.Identity ] = PeerDetails.From( beacon, capabilities );
+               }
+
+               await Task.Yield();
             }
-            else
-            {
-               Log( dequeued ? "Beacon from known peer (ignoring)" : "No beacons available" );
-            }
-
-            await Task.Yield();
+         }
+         catch( Exception e )
+         {
+            logger.LogError( e, "Exception in PresenceResponseAsync" );
          }
       }
 
@@ -154,31 +161,40 @@
       /// <returns>Void (async)</returns>
       private async Task CapabilitiesResponseAsync( CancellationToken token )
       {
-         using var capabilitiesSocket = new RouterSocket();
-         capabilitiesSocket.Options.Identity = Encoding.Unicode.GetBytes( identity.Id );
-         capabilitiesSocket.Bind( $"tcp://*:{CAPABILITIES_PORT}" );
-
-         Log( "Capabilities response listener running" );
-
-         while( !token.IsCancellationRequested )
+         try
          {
-            CapabilitiesRequest request = CapabilitiesRequest.From( await capabilitiesSocket.ReceiveMultipartMessageAsync( 3, token ) );
+            using var capabilitiesSocket = new RouterSocket();
+            capabilitiesSocket.Options.Identity = Encoding.Unicode.GetBytes( identity.Id );
+            capabilitiesSocket.Options.RouterMandatory = true;
+            capabilitiesSocket.Bind( $"tcp://*:{CAPABILITIES_PORT}" );
 
-            if( request.IsValid )
-            {
-               Log( "Sending capabilities" );
-               // TODO: Implement capabilities
-               capabilitiesSocket.TrySendMultipartMessage( TimeSpan.FromSeconds( 1 ),
-                                                           CapabilitiesResponse.From( request.Id,
-                                                                                      Capability.Parse( "One:1" ),
-                                                                                      Capability.Parse( "Other:12" ) ) );
-            }
-            else
-            {
-               Log( "Invalid capabilities request" );
-            }
+            Log( "Capabilities response listener running" );
 
-            await Task.Yield();
+            while( !token.IsCancellationRequested )
+            {
+               Log( " > Listening for capabilities requests..." );
+               CapabilitiesRequest request = CapabilitiesRequest.From( await capabilitiesSocket.ReceiveMultipartMessageAsync( 3, token ) );
+
+               if( request.IsValid )
+               {
+                  Log( " > Sending capabilities" );
+                  // TODO: Implement capabilities
+                  capabilitiesSocket.TrySendMultipartMessage( TimeSpan.FromSeconds( 1 ),
+                                                              CapabilitiesResponse.From( request.Id,
+                                                                                         Capability.Parse( "One:1" ),
+                                                                                         Capability.Parse( "Other:12" ) ) );
+               }
+               else
+               {
+                  Log( $" > Invalid capabilities request: {request.Dump()}" );
+               }
+
+               await Task.Yield();
+            }
+         }
+         catch( Exception e )
+         {
+            logger.LogError( e, "Exception in CapabilitiesResponseAsync" );
          }
       }
    }
