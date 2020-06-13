@@ -4,9 +4,6 @@ namespace Alpha.Infrastructure.Extensions
 
    public static class EnumerableExtensions
    {
-      /// <summary>
-      ///    <para>Determines whether a sequence contains a specified element by using the default equality comparer.</para>
-      /// </summary>
       /// <remarks>
       ///    An alias for the
       ///    <see cref="Enumerable.Contains{TSource}(System.Collections.Generic.IEnumerable{TSource},TSource)" /> extensions
