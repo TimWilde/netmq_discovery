@@ -17,6 +17,4 @@ RUN dotnet publish "Alpha.csproj" -c Release -o /app/publish
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-EXPOSE 5670/udp
-EXPOSE 5670-5671/tcp
 ENTRYPOINT ["dotnet", "Alpha.dll"]
