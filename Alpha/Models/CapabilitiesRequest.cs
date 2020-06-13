@@ -1,6 +1,7 @@
 namespace Alpha.Models
 {
    using System.Collections.Generic;
+   using Infrastructure.Extensions;
    using NetMQ;
    using NetMQ.Sockets;
 
@@ -12,8 +13,11 @@ namespace Alpha.Models
    {
       public static readonly string Hello = "HELLO";
 
-      public string Id => this[ 0 ].ConvertToString();
-      public bool IsValid => this[ 1 ].IsEmpty && this[ 2 ].ConvertToString() == Hello;
+      public string Id => FrameCount > 2 ? this[ 0 ].ConvertToString() : string.Empty;
+
+      public bool IsValid => FrameCount.IsEither( 2, 3 ) &&
+                             this[ FrameCount - 2 ].IsEmpty &&
+                             this[ FrameCount - 1 ].ConvertToString() == Hello;
 
       private CapabilitiesRequest( IEnumerable<NetMQFrame> frames ): base( frames ) { }
 
