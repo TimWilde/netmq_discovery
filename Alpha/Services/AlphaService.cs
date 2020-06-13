@@ -16,7 +16,7 @@
    public class AlphaService: BackgroundService
    {
       private const int PRESENCE_PORT = 5670;
-      private const int CAPABILITIES_PORT = 5671;
+      private const int CAPABILITIES_PORT = 5670;
       private const string SERVICE_PREFIX = "SVC_";
       private const string CONTROL_PREFIX = "CTL:";
 
