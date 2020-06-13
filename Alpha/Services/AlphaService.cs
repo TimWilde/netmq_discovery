@@ -6,7 +6,7 @@
    using System.Text;
    using System.Threading;
    using System.Threading.Tasks;
-   using Infrastructure;
+   using Infrastructure.Extensions;
    using Microsoft.Extensions.Hosting;
    using Microsoft.Extensions.Logging;
    using Models;
